@@ -15,10 +15,13 @@ public:
     PluginSymbol GetSymbol(const string& SymbolName);
     PluginResult FreeSymbol(PluginSymbol Symbol);
     PluginHandle GetHandle() const;
-    Plugin(const string& Path);
+    const string& GetName() const;
+    const string& GetPath() const;
+    Plugin(const string& Path, const string& Name);
 
 private:
     string Path;
+    string Name;
     PluginHandle Handle;
     mutable mutex Mutex;
     bool Opened;
@@ -27,16 +30,19 @@ private:
 
 class PluginManager {
 public:
-    tuple<PluginHandle, PluginResult> LoadPlugin(const string& Path);
+    tuple<PluginHandle, PluginResult> LoadPlugin(const string& Path, const string& Name);
     tuple<std::shared_ptr<Plugin>, PluginResult> FindPlugin(PluginHandle Handle);
+    tuple<std::shared_ptr<Plugin>, PluginResult> FindPluginByName(const string& Name);
+    tuple<std::shared_ptr<Plugin>, PluginResult> FindPluginByPath(const string& Path);
 
 private:
     unordered_map<PluginHandle, std::shared_ptr<Plugin>> Plugins;
     mutex Mutex;
 };
 
-Plugin::Plugin(const string& Path)
+Plugin::Plugin(const string& Path, const string& Name)
     : Path(Path)
+    , Name(Name)
     , Opened(false)
 {
 }
@@ -51,6 +57,9 @@ PluginResult Plugin::Load()
     if (Handle == nullptr) {
         return PLUGIN_DLOPEN_ERR;
     }
+
+    Opened = true;
+
     return PLUGIN_OK;
 }
 
@@ -65,6 +74,7 @@ PluginResult Plugin::TryUnload()
             return PLUGIN_BUSY;
         }
     }
+
     RefCount.clear();
     dlclose(Handle);
     Handle = nullptr;
@@ -104,10 +114,27 @@ PluginHandle Plugin::GetHandle() const
     return Handle;
 }
 
-tuple<PluginHandle, PluginResult> PluginManager::LoadPlugin(const string& Path)
+const string& Plugin::GetName() const
 {
     scoped_lock Lck(Mutex);
-    auto plugin = make_shared<Plugin>(Path);
+    return Name;
+}
+
+const string& Plugin::GetPath() const
+{
+    scoped_lock Lck(Mutex);
+    return Path;
+}
+
+tuple<PluginHandle, PluginResult> PluginManager::LoadPlugin(const string& Path, const string& Name)
+{
+    scoped_lock Lck(Mutex);
+    for (auto& Plugin : Plugins) {
+        if (Plugin.second->GetName() == Name || Plugin.second->GetPath() == Path) {
+            return { INVALID_PLUGIN_HANDLE, PLUGIN_NAME_EXIST };
+        }
+    }
+    auto plugin = make_shared<Plugin>(Path, Name);
     PluginResult Result = plugin->Load();
     if (Result != PLUGIN_OK) {
         return { INVALID_PLUGIN_HANDLE, Result };
@@ -126,13 +153,35 @@ tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPlugin(PluginHandle H
     return { It->second, PLUGIN_OK };
 }
 
+tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByName(const string& Name)
+{
+    scoped_lock Lck(Mutex);
+    for (auto& Plugin : Plugins) {
+        if (Plugin.second->GetName() == Name) {
+            return { Plugin.second, PLUGIN_OK };
+        }
+    }
+    return { nullptr, PLUGIN_NOT_FOUND };
+}
+
+tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByPath(const string& Path)
+{
+    scoped_lock Lck(Mutex);
+    for (auto& Plugin : Plugins) {
+        if (Plugin.second->GetPath() == Path) {
+            return { Plugin.second, PLUGIN_OK };
+        }
+    }
+    return { nullptr, PLUGIN_NOT_FOUND };
+}
+
 ///////////////////////////////////////////
 
 static PluginManager PluginManagerInstance;
 
-PluginHandle LoadPlugin(const char* PluginPath)
+PluginHandle LoadPlugin(const char* PluginPath, const char* Name)
 {
-    return get<0>(PluginManagerInstance.LoadPlugin(PluginPath));
+    return get<0>(PluginManagerInstance.LoadPlugin(PluginPath, Name));
 }
 
 PluginResult UnloadPlugin(PluginHandle Plugin)
@@ -160,4 +209,22 @@ PluginResult FreePluginSymbol(PluginHandle Plugin, PluginSymbol Symbol)
         return result;
     }
     return plugin->FreeSymbol(Symbol);
+}
+
+PluginHandle FindPluginByName(const char* Name)
+{
+    auto [plugin, result] = (PluginManagerInstance.FindPluginByName(Name));
+    if (result != PLUGIN_OK) {
+        return INVALID_PLUGIN_HANDLE;
+    }
+    return plugin->GetHandle();
+}
+
+PluginHandle FindPluginByPath(const char* Path)
+{
+    auto [plugin, result] = (PluginManagerInstance.FindPluginByPath(Path));
+    if (result != PLUGIN_OK) {
+        return INVALID_PLUGIN_HANDLE;
+    }
+    return plugin->GetHandle();
 }

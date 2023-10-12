@@ -15,14 +15,17 @@ _Pragma("once")
         PLUGIN_BUSY,
         PLUGIN_SYM_NOT_FOUND,
         PLUGIN_NOT_FOUND,
+        PLUGIN_NAME_EXIST,
     };
 
 #define INVALID_PLUGIN_HANDLE ((PluginHandle)0)
 
-    PluginHandle LoadPlugin(const char* PluginPath);
+    PluginHandle LoadPlugin(const char* PluginPath, const char* Name);
     PluginResult UnloadPlugin(PluginHandle Plugin);
     PluginSymbol GetPluginSymbol(PluginHandle Plugin, const char* SymbolName);
     PluginResult FreePluginSymbol(PluginHandle Plugin, PluginSymbol Symbol);
+    PluginHandle FindPluginByName(const char* Name);
+    PluginHandle FindPluginByPath(const char* Path);
 
 #ifdef __cplusplus
 }
