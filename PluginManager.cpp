@@ -131,7 +131,7 @@ tuple<PluginHandle, PluginResult> PluginManager::LoadPlugin(const string& Path, 
     scoped_lock Lck(Mutex);
     for (auto& Plugin : Plugins) {
         if (Plugin.second->GetName() == Name || Plugin.second->GetPath() == Path) {
-            return { INVALID_PLUGIN_HANDLE, PLUGIN_NAME_EXIST };
+            return { INVALID_PLUGIN_HANDLE, PLUGIN_EXISTS };
         }
     }
     auto plugin = make_shared<Plugin>(Path, Name);

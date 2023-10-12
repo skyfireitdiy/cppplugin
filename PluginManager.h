@@ -15,7 +15,7 @@ _Pragma("once")
         PLUGIN_BUSY,
         PLUGIN_SYM_NOT_FOUND,
         PLUGIN_NOT_FOUND,
-        PLUGIN_NAME_EXIST,
+        PLUGIN_EXISTS,
     };
 
 #define INVALID_PLUGIN_HANDLE ((PluginHandle)0)
