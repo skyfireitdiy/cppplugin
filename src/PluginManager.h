@@ -20,12 +20,13 @@ _Pragma("once")
 
 #define INVALID_PLUGIN_HANDLE ((PluginHandle)0)
 
-    PluginHandle LoadPlugin(const char* PluginPath, const char* Name);
-    PluginResult UnloadPlugin(PluginHandle Plugin);
-    PluginSymbol GetPluginSymbol(PluginHandle Plugin, const char* SymbolName);
-    PluginResult FreePluginSymbol(PluginHandle Plugin, PluginSymbol Symbol);
-    PluginHandle FindPluginByName(const char* Name);
-    PluginHandle FindPluginByPath(const char* Path);
+    PluginHandle LoadPlugin(const char* pluginPath, const char* name);
+    PluginResult UnloadPlugin(PluginHandle plugin);
+    PluginSymbol GetPluginSymbol(PluginHandle plugin, const char* symbolName);
+    PluginResult FreePluginSymbol(PluginHandle plugin, PluginSymbol pluginSymbol);
+    PluginHandle FindPluginByName(const char* name);
+    PluginHandle FindPluginByPath(const char* path);
+    void SetLogFlag(bool flag);
 
 #ifdef __cplusplus
 }
