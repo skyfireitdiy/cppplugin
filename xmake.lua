@@ -1,7 +1,12 @@
 add_rules("mode.debug", "mode.release")
 
+if is_mode("debug") then
+    add_defines("DEBUG")
+end
+
 target("cppplugin")
-set_kind("static")
+set_kind("shared")
+add_defines("PLUGIN_MODULE")
 add_files("src/*.cpp")
 
 target("example")

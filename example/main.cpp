@@ -1,11 +1,11 @@
-#include "../src/PluginManager.h"
+#include "../src/Plugin.h"
 #include <cstdlib>
 #include <gtest/gtest.h>
 #include <iostream>
 
 using namespace std;
 
-#ifdef _NDEBUG
+#ifdef DEBUG
 #define SO_PATH "/home/skyfire/code/cppplugin/build/linux/x86_64/debug/"
 #else
 #define SO_PATH "/home/skyfire/code/cppplugin/build/linux/x86_64/release/"
@@ -13,6 +13,7 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+    PluginModuleInit();
     SetLogFlag(true);
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

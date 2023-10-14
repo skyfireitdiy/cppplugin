@@ -1,4 +1,4 @@
-#include "PluginManager.h"
+#include "Plugin.h"
 #include <dlfcn.h>
 #include <memory>
 #include <mutex>
@@ -8,7 +8,25 @@
 
 using namespace std;
 
-bool LogFlag = false;
+extern "C" {
+PluginHandle (*LoadPlugin)(const char* pluginPath, const char* name) = nullptr;
+PluginResult (*UnloadPlugin)(PluginHandle plugin) = nullptr;
+PluginSymbol (*GetPluginSymbol)(PluginHandle plugin, const char* symbolName) = nullptr;
+PluginResult (*FreePluginSymbol)(PluginHandle plugin, PluginSymbol pluginSymbol) = nullptr;
+PluginHandle (*FindPluginByName)(const char* name) = nullptr;
+PluginHandle (*FindPluginByPath)(const char* path) = nullptr;
+void (*SetLogFlag)(bool flag) = nullptr;
+
+PluginHandle LoadPlugin_(const char* pluginPath, const char* name);
+PluginResult UnloadPlugin_(PluginHandle plugin);
+PluginSymbol GetPluginSymbol_(PluginHandle plugin, const char* symbolName);
+PluginResult FreePluginSymbol_(PluginHandle plugin, PluginSymbol pluginSymbol);
+PluginHandle FindPluginByName_(const char* name);
+PluginHandle FindPluginByPath_(const char* path);
+void SetLogFlag_(bool flag);
+}
+
+static bool LogFlag = false;
 
 #define LogPrint(fmt, ...)                                                              \
     if (LogFlag) {                                                                      \
@@ -37,11 +55,11 @@ private:
 
 class PluginManager {
 public:
-    tuple<PluginHandle, PluginResult> LoadPlugin(const string& path, const string& name);
-    PluginResult UnloadPlugin(PluginHandle pluginHandle);
+    tuple<PluginHandle, PluginResult> LoadPlugin_(const string& path, const string& name);
+    PluginResult UnloadPlugin_(PluginHandle pluginHandle);
     tuple<shared_ptr<Plugin>, PluginResult> FindPlugin(PluginHandle pluginHandle);
-    tuple<shared_ptr<Plugin>, PluginResult> FindPluginByName(const string& name);
-    tuple<shared_ptr<Plugin>, PluginResult> FindPluginByPath(const string& path);
+    tuple<shared_ptr<Plugin>, PluginResult> FindPluginByName_(const string& name);
+    tuple<shared_ptr<Plugin>, PluginResult> FindPluginByPath_(const string& path);
 
 private:
     unordered_map<PluginHandle, std::shared_ptr<Plugin>> Plugins;
@@ -149,7 +167,7 @@ const string& Plugin::GetPath() const
     return Path;
 }
 
-tuple<PluginHandle, PluginResult> PluginManager::LoadPlugin(const string& path, const string& name)
+tuple<PluginHandle, PluginResult> PluginManager::LoadPlugin_(const string& path, const string& name)
 {
     scoped_lock Lck(Mutex);
     for (auto& Plugin : Plugins) {
@@ -179,7 +197,7 @@ tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPlugin(PluginHandle p
     return { It->second, PLUGIN_OK };
 }
 
-tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByName(const string& name)
+tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByName_(const string& name)
 {
     scoped_lock Lck(Mutex);
     for (auto& Plugin : Plugins) {
@@ -190,7 +208,7 @@ tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByName(const st
     return { nullptr, PLUGIN_NOT_FOUND };
 }
 
-tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByPath(const string& path)
+tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByPath_(const string& path)
 {
     scoped_lock Lck(Mutex);
     for (auto& Plugin : Plugins) {
@@ -201,7 +219,7 @@ tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByPath(const st
     return { nullptr, PLUGIN_NOT_FOUND };
 }
 
-PluginResult PluginManager::UnloadPlugin(PluginHandle pluginHandle)
+PluginResult PluginManager::UnloadPlugin_(PluginHandle pluginHandle)
 {
     auto [plugin, result] = FindPlugin(pluginHandle);
     if (result != PLUGIN_OK) {
@@ -221,17 +239,17 @@ PluginResult PluginManager::UnloadPlugin(PluginHandle pluginHandle)
 
 PluginManager PluginManagerInstance;
 
-PluginHandle LoadPlugin(const char* pluginPath, const char* name)
+PluginHandle LoadPlugin_(const char* pluginPath, const char* name)
 {
-    return get<0>(PluginManagerInstance.LoadPlugin(pluginPath, name));
+    return get<0>(PluginManagerInstance.LoadPlugin_(pluginPath, name));
 }
 
-PluginResult UnloadPlugin(PluginHandle pluginHandle)
+PluginResult UnloadPlugin_(PluginHandle pluginHandle)
 {
-    return PluginManagerInstance.UnloadPlugin(pluginHandle);
+    return PluginManagerInstance.UnloadPlugin_(pluginHandle);
 }
 
-PluginSymbol GetPluginSymbol(PluginHandle pluginHandle, const char* symbolName)
+PluginSymbol GetPluginSymbol_(PluginHandle pluginHandle, const char* symbolName)
 {
     auto [plugin, result] = PluginManagerInstance.FindPlugin(pluginHandle);
     if (result != PLUGIN_OK) {
@@ -240,7 +258,7 @@ PluginSymbol GetPluginSymbol(PluginHandle pluginHandle, const char* symbolName)
     return plugin->GetSymbol(symbolName);
 }
 
-PluginResult FreePluginSymbol(PluginHandle pluginHandle, PluginSymbol pluginSymbol)
+PluginResult FreePluginSymbol_(PluginHandle pluginHandle, PluginSymbol pluginSymbol)
 {
     auto [plugin, result] = PluginManagerInstance.FindPlugin(pluginHandle);
     if (result != PLUGIN_OK) {
@@ -250,25 +268,25 @@ PluginResult FreePluginSymbol(PluginHandle pluginHandle, PluginSymbol pluginSymb
     return plugin->FreeSymbol(pluginSymbol);
 }
 
-PluginHandle FindPluginByName(const char* name)
+PluginHandle FindPluginByName_(const char* name)
 {
-    auto [plugin, result] = (PluginManagerInstance.FindPluginByName(name));
+    auto [plugin, result] = (PluginManagerInstance.FindPluginByName_(name));
     if (result != PLUGIN_OK) {
         return INVALID_PLUGIN_HANDLE;
     }
     return plugin->GetHandle();
 }
 
-PluginHandle FindPluginByPath(const char* path)
+PluginHandle FindPluginByPath_(const char* path)
 {
-    auto [plugin, result] = (PluginManagerInstance.FindPluginByPath(path));
+    auto [plugin, result] = (PluginManagerInstance.FindPluginByPath_(path));
     if (result != PLUGIN_OK) {
         return INVALID_PLUGIN_HANDLE;
     }
     return plugin->GetHandle();
 }
 
-void SetLogFlag(bool flag)
+void SetLogFlag_(bool flag)
 {
     LogFlag = flag;
 }
