@@ -38,9 +38,9 @@ private:
     string Path;
     string Name;
     PluginHandle pluginHandle;
-    mutable mutex Mutex;
+    mutable mutex SymRefCountMutex;
     bool Opened;
-    mutable unordered_map<PluginSymbol, int> RefCount;
+    mutable unordered_map<PluginSymbol, int> SymRefCount;
 };
 
 class PluginManager {
@@ -53,7 +53,7 @@ public:
 
 private:
     unordered_map<PluginHandle, std::shared_ptr<Plugin>> Plugins;
-    mutex Mutex;
+    mutex SymRefCountMutex;
 };
 
 Plugin::Plugin(const string& path, const string& name)
@@ -65,7 +65,7 @@ Plugin::Plugin(const string& path, const string& name)
 
 PluginResult Plugin::Load()
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     if (Opened) {
         LogPrint("Plugin %s is already loaded", Name.c_str());
         return PLUGIN_OK;
@@ -84,19 +84,19 @@ PluginResult Plugin::Load()
 
 PluginResult Plugin::TryUnload()
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     if (!Opened) {
         LogPrint("Plugin %s is not loaded", Name.c_str());
         return PLUGIN_NOT_LOAD;
     }
-    for (auto& Ref : RefCount) {
+    for (auto& Ref : SymRefCount) {
         if (Ref.second > 0) {
             LogPrint("Plugin %s is busy", Name.c_str());
             return PLUGIN_BUSY;
         }
     }
 
-    RefCount.clear();
+    SymRefCount.clear();
     dlclose(pluginHandle);
     pluginHandle = nullptr;
     Opened = false;
@@ -106,7 +106,7 @@ PluginResult Plugin::TryUnload()
 
 PluginSymbol Plugin::GetSymbol(const string& symbolName)
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     if (!Opened) {
         LogPrint("Plugin %s is not loaded", Name.c_str());
         return nullptr;
@@ -116,24 +116,24 @@ PluginSymbol Plugin::GetSymbol(const string& symbolName)
         LogPrint("Failed to get symbol %s from plugin %s: %s", symbolName.c_str(), Name.c_str(), dlerror());
         return nullptr;
     }
-    RefCount[Symbol]++;
+    SymRefCount[Symbol]++;
     LogPrint("Get symbol %s from plugin %s", symbolName.c_str(), Name.c_str());
     return Symbol;
 }
 
 PluginResult Plugin::FreeSymbol(PluginSymbol pluginSymbol)
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     if (!Opened) {
         return PLUGIN_NOT_LOAD;
     }
-    if (RefCount.find(pluginSymbol) == RefCount.end()) {
+    if (SymRefCount.find(pluginSymbol) == SymRefCount.end()) {
         return PLUGIN_SYM_NOT_FOUND;
     }
-    if (RefCount[pluginSymbol] > 0) {
-        RefCount[pluginSymbol]--;
-        if (RefCount[pluginSymbol] == 0) {
-            RefCount.erase(pluginSymbol);
+    if (SymRefCount[pluginSymbol] > 0) {
+        SymRefCount[pluginSymbol]--;
+        if (SymRefCount[pluginSymbol] == 0) {
+            SymRefCount.erase(pluginSymbol);
         }
     }
     return PLUGIN_OK;
@@ -141,25 +141,25 @@ PluginResult Plugin::FreeSymbol(PluginSymbol pluginSymbol)
 
 PluginHandle Plugin::GetHandle() const
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     return pluginHandle;
 }
 
 const string& Plugin::GetName() const
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     return Name;
 }
 
 const string& Plugin::GetPath() const
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     return Path;
 }
 
 tuple<PluginHandle, PluginResult> PluginManager::LoadPlugin_(const string& path, const string& name)
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     for (auto& Plugin : Plugins) {
         if (Plugin.second->GetName() == name || Plugin.second->GetPath() == path) {
             LogPrint("Plugin %s is already loaded", name.c_str());
@@ -179,7 +179,7 @@ tuple<PluginHandle, PluginResult> PluginManager::LoadPlugin_(const string& path,
 
 tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPlugin(PluginHandle pluginHandle)
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     auto It = Plugins.find(pluginHandle);
     if (It == Plugins.end()) {
         return { nullptr, PLUGIN_NOT_FOUND };
@@ -189,7 +189,7 @@ tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPlugin(PluginHandle p
 
 tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByName_(const string& name)
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     for (auto& Plugin : Plugins) {
         if (Plugin.second->GetName() == name) {
             return { Plugin.second, PLUGIN_OK };
@@ -200,7 +200,7 @@ tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByName_(const s
 
 tuple<shared_ptr<Plugin>, PluginResult> PluginManager::FindPluginByPath_(const string& path)
 {
-    scoped_lock Lck(Mutex);
+    scoped_lock Lck(SymRefCountMutex);
     for (auto& Plugin : Plugins) {
         if (Plugin.second->GetPath() == path) {
             return { Plugin.second, PLUGIN_OK };
