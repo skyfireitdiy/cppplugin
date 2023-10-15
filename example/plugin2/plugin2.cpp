@@ -9,7 +9,6 @@ int plugin2_func(const char* param);
 
 int plugin2_func(const char* param)
 {
-    PluginModuleInit();
 
     printf("after init\n");
 

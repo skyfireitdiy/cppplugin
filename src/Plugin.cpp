@@ -8,23 +8,13 @@
 
 using namespace std;
 
-extern "C" {
-PluginHandle (*LoadPlugin)(const char* pluginPath, const char* name) = nullptr;
-PluginResult (*UnloadPlugin)(PluginHandle plugin) = nullptr;
-PluginSymbol (*GetPluginSymbol)(PluginHandle plugin, const char* symbolName) = nullptr;
-PluginResult (*FreePluginSymbol)(PluginHandle plugin, PluginSymbol pluginSymbol) = nullptr;
-PluginHandle (*FindPluginByName)(const char* name) = nullptr;
-PluginHandle (*FindPluginByPath)(const char* path) = nullptr;
-void (*SetLogFlag)(bool flag) = nullptr;
-
-PluginHandle LoadPlugin_(const char* pluginPath, const char* name);
-PluginResult UnloadPlugin_(PluginHandle plugin);
-PluginSymbol GetPluginSymbol_(PluginHandle plugin, const char* symbolName);
-PluginResult FreePluginSymbol_(PluginHandle plugin, PluginSymbol pluginSymbol);
-PluginHandle FindPluginByName_(const char* name);
-PluginHandle FindPluginByPath_(const char* path);
-void SetLogFlag_(bool flag);
-}
+PluginHandle LoadPlugin(const char* pluginPath, const char* name);
+PluginResult UnloadPlugin(PluginHandle plugin);
+PluginSymbol GetPluginSymbol(PluginHandle plugin, const char* symbolName);
+PluginResult FreePluginSymbol(PluginHandle plugin, PluginSymbol pluginSymbol);
+PluginHandle FindPluginByName(const char* name);
+PluginHandle FindPluginByPath(const char* path);
+void SetLogFlag(bool flag);
 
 static bool LogFlag = false;
 
@@ -239,17 +229,17 @@ PluginResult PluginManager::UnloadPlugin_(PluginHandle pluginHandle)
 
 PluginManager PluginManagerInstance;
 
-PluginHandle LoadPlugin_(const char* pluginPath, const char* name)
+PluginHandle LoadPlugin(const char* pluginPath, const char* name)
 {
     return get<0>(PluginManagerInstance.LoadPlugin_(pluginPath, name));
 }
 
-PluginResult UnloadPlugin_(PluginHandle pluginHandle)
+PluginResult UnloadPlugin(PluginHandle pluginHandle)
 {
     return PluginManagerInstance.UnloadPlugin_(pluginHandle);
 }
 
-PluginSymbol GetPluginSymbol_(PluginHandle pluginHandle, const char* symbolName)
+PluginSymbol GetPluginSymbol(PluginHandle pluginHandle, const char* symbolName)
 {
     auto [plugin, result] = PluginManagerInstance.FindPlugin(pluginHandle);
     if (result != PLUGIN_OK) {
@@ -258,7 +248,7 @@ PluginSymbol GetPluginSymbol_(PluginHandle pluginHandle, const char* symbolName)
     return plugin->GetSymbol(symbolName);
 }
 
-PluginResult FreePluginSymbol_(PluginHandle pluginHandle, PluginSymbol pluginSymbol)
+PluginResult FreePluginSymbol(PluginHandle pluginHandle, PluginSymbol pluginSymbol)
 {
     auto [plugin, result] = PluginManagerInstance.FindPlugin(pluginHandle);
     if (result != PLUGIN_OK) {
@@ -268,7 +258,7 @@ PluginResult FreePluginSymbol_(PluginHandle pluginHandle, PluginSymbol pluginSym
     return plugin->FreeSymbol(pluginSymbol);
 }
 
-PluginHandle FindPluginByName_(const char* name)
+PluginHandle FindPluginByName(const char* name)
 {
     auto [plugin, result] = (PluginManagerInstance.FindPluginByName_(name));
     if (result != PLUGIN_OK) {
@@ -277,7 +267,7 @@ PluginHandle FindPluginByName_(const char* name)
     return plugin->GetHandle();
 }
 
-PluginHandle FindPluginByPath_(const char* path)
+PluginHandle FindPluginByPath(const char* path)
 {
     auto [plugin, result] = (PluginManagerInstance.FindPluginByPath_(path));
     if (result != PLUGIN_OK) {
@@ -286,7 +276,7 @@ PluginHandle FindPluginByPath_(const char* path)
     return plugin->GetHandle();
 }
 
-void SetLogFlag_(bool flag)
+void SetLogFlag(bool flag)
 {
     LogFlag = flag;
 }
