@@ -5,11 +5,8 @@
 
 using namespace std;
 
-#ifdef DEBUG
-#define SO_PATH "/home/skyfire/code/cppplugin/build/linux/x86_64/debug/"
-#else
-#define SO_PATH "/home/skyfire/code/cppplugin/build/linux/x86_64/release/"
-#endif
+#define SO_PATH "./"
+
 
 int main(int argc, char** argv)
 {
