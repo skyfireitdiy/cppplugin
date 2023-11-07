@@ -39,7 +39,7 @@ private:
     string Name;
     PluginHandle pluginHandle;
     mutable mutex SymRefCountMutex;
-    bool Opened;
+    bool Opened = false;
     mutable unordered_map<PluginSymbol, int> SymRefCount;
 };
 
