@@ -39,7 +39,7 @@ TEST(Plugin, CallFunc)
     EXPECT_EQ(UnloadPlugin(plugin1), PLUGIN_OK);
 }
 
-TEST(Plugin, LoadTowice)
+TEST(Plugin, LoadTwice)
 {
     auto plugin1 = LoadPlugin(SO_PATH "libplugin1.so", "plugin1");
     EXPECT_NE(plugin1, INVALID_PLUGIN_HANDLE);
@@ -48,7 +48,7 @@ TEST(Plugin, LoadTowice)
     EXPECT_EQ(UnloadPlugin(plugin1), PLUGIN_OK);
 }
 
-TEST(Plugin, GetSymbolTowice)
+TEST(Plugin, GetSymbolTwice)
 {
     auto plugin1 = LoadPlugin(SO_PATH "libplugin1.so", "plugin1");
     EXPECT_NE(plugin1, INVALID_PLUGIN_HANDLE);
@@ -62,7 +62,7 @@ TEST(Plugin, GetSymbolTowice)
     EXPECT_EQ(UnloadPlugin(plugin1), PLUGIN_OK);
 }
 
-TEST(Plugin, FreeSymbolTowice)
+TEST(Plugin, FreeSymbolTwice)
 {
     auto plugin1 = LoadPlugin(SO_PATH "libplugin1.so", "plugin1");
     EXPECT_NE(plugin1, INVALID_PLUGIN_HANDLE);
