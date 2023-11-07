@@ -16,7 +16,7 @@ target("example")
 set_kind("binary")
 add_files("example/*.cpp")
 add_deps("cppplugin")
-add_links("dl", "gtest")
+add_links("dl", "gtest", "pthread")
 add_packages("gtest")
 
 target("plugin1")
